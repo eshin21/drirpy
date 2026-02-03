@@ -1,3 +1,3 @@
 # drirpy
-a repository to detect significant direct and inverted repeats in python.
-<span style="color:blue">some *blue* text</span>.
+a repository to detect significant **d**irect **r**epeats and **i**nverted **r**epeats in **py**thon.
+
