@@ -1,3 +1,3 @@
 # drirpy
-a repository to detect significant **d**irect **r**epeats and **i**nverted **r**epeats in **py**thon.
+a repository to detect significant <ins>**d**</ins>irect <ins>**r**</ins>epeats and <ins>**i**</ins>nverted <ins>**r**</ins>epeats in <ins>**py**</ins>thon.
 
