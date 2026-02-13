@@ -1,7 +1,9 @@
 ### HEADER
 ## Author: Enoch Shin
-## Purpose: This file aims to ingest MEME XML files  (Multiple Em for Motif Elicitation) to detect direct repeats or indirect repeats in the list of detected motifs.
-## Method: using the PSSM matrix
+## Purpose: This file aims to ingest MEME XML files  (Multiple Em for Motif Elicitation) to detect direct repeats or inverted repeats (reverse complements) in the list of detected motifs.
+
+## Method: using the PSSM matrix (or other matrices if needed), perform self-correlation of the motif to detect direct repeats (diagonal runs with high correlation, or some other appropriate metric such as information content) and inverted repeats.
+
 
 from Bio import motifs
 import numpy as np
@@ -85,17 +87,16 @@ pssm
 
 # Step 2: Plot the Heatmap
 plt.figure(figsize=(10, 8))
-# Create labels starting from 1 up to the motif length
-labels = np.arange(1, motif.length + 1)
+
+# Create a DataFrame with 1-based indexing
+df_corr = pd.DataFrame(correlation_matrix, index=range(1, motif.length + 1), columns=range(1, motif.length + 1))
 
 sns.heatmap(
-    correlation_matrix, 
+    df_corr, 
     annot=False,       # Turn on if you want to see the numbers
     cmap='coolwarm',   # Red = Positive correlation, Blue = Negative
     vmin=-1, vmax=1,   # Fix scale from -1 to 1 for consistency
-    square=True,
-    xticklabels=labels,
-    yticklabels=labels
+    square=True
 )
 
 plt.title("Example 1 - PSSM Self-Correlation (Direct Repeats)")
