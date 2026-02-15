@@ -78,9 +78,7 @@ print("\n")
 
 correlation_matrix = np.corrcoef(matrix_data, rowvar=False)
 
-
-
-# region Checking Negative Correlations
+# region Investigating Negative Correlations
 
 #### checking motif locations for negative correlations 
 ## these won't directly show inverted repeats, but could be useful
@@ -113,16 +111,69 @@ for idx in sorted_indices:
 
 # endregion
 
+# region Investigating ties in correlations
+## show PSSM at motif indices that have ties in PSSM values
+print("Checking for ties in PSSM scores (ambiguous consensus):")
+for i in range(matrix_data.shape[1]):
+    col = matrix_data[:, i]
+    max_val = np.max(col)
+    # Check for ties in the maximum score
+    if np.sum(np.isclose(col, max_val)) > 1:
+        print(f"Position {i+1} has a tie for the top score:")
+        print(pd.Series(col, index=['A', 'C', 'G', 'T']))
+        print("-" * 20)
+    else: 
+        print("no ties")
+# endregion
+
 
 ## Manual blankout heuristics:
 
-# Identity correlation will always be 1.0, so we can blank out the diagonal to focus on off-diagonal correlations 
-correlation_matrix_narrowed = np.fill_diagonal(correlation_matrix, np.nan)
 
-# blank out correlations < 0.0 (negative correlation) 
-correlation_matrix_narrowed = correlation_matrix[correlation_matrix < 0.5] = np.nan
 
-# and maybe even < 0.5 (weak correlation)
+
+# 1. Filter by consensus base identity
+# Get the index of the max score for each position (0=A, 1=C, 2=G, 3=T)
+consensus_indices = np.argmax(matrix_data, axis=0)
+# Create a boolean matrix where True means both positions have the same consensus base
+base_match_mask = (consensus_indices[:, None] == consensus_indices[None, :])
+# Apply mask: set correlations to NaN where bases don't match
+correlation_matrix[~base_match_mask] = np.nan
+
+# 1.5 Remove diagonals for which the pairwise distance between the motif indices is <3 bp (to focus on longer repeats)
+x, y = np.indices(correlation_matrix.shape)
+correlation_matrix[np.abs(x - y) < 3] = np.nan
+
+# 1.75 Blank out values where the continuous diagonal of positive correlations is less than 3 cells long
+valid = ~np.isnan(correlation_matrix)
+# Ensure positive correlation (though base matching usually implies this, we enforce it as per comment)
+valid &= (np.nan_to_num(correlation_matrix, nan=-1.0) > 0)
+
+# Create shifted views to check neighbors along the diagonal
+# Down-right shifts (looking at previous elements)
+prev1 = np.zeros_like(valid)
+prev1[1:, 1:] = valid[:-1, :-1]
+prev2 = np.zeros_like(valid)
+prev2[2:, 2:] = valid[:-2, :-2]
+
+# Up-left shifts (looking at next elements)
+next1 = np.zeros_like(valid)
+next1[:-1, :-1] = valid[1:, 1:]
+next2 = np.zeros_like(valid)
+next2[:-2, :-2] = valid[2:, 2:]
+
+# Keep if part of a run >= 3 (start, middle, or end)
+keep_mask = valid & ((prev1 & prev2) | (next1 & next2) | (prev1 & next1))
+correlation_matrix[~keep_mask] = np.nan
+
+# 2. Blank out correlations < 0.5 (weak correlation)
+correlation_matrix[correlation_matrix < 0.5] = np.nan
+
+# 3. Identity correlation will always be 1.0, so we can blank out the diagonal to focus on off-diagonal correlations 
+np.fill_diagonal(correlation_matrix, -1.0)
+
+correlation_matrix_narrowed = correlation_matrix.copy()
+
 
 
 
@@ -141,7 +192,7 @@ sns.heatmap(
     yticklabels=labels
 )
 
-plt.title("Example 1 - PSSM Self-Correlation (Direct Repeats), >0.5 Correlation Only")
+plt.title("Example 1 - PSSM Self-Correlation (Direct Repeats) \n>0.5 Correlation Only \nRemove Non-Matching Bases \n Remove <3 bp Diagonal Runs")
 plt.xlabel("Motif Position")
 plt.ylabel("Motif Position")
 plt.show()
